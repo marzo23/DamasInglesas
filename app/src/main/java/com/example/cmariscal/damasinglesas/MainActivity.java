@@ -10,6 +10,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.shapes.Shape;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.Gravity;
@@ -84,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
     }
     int I = -1;
     int J = -1;
+    int turno = 0;
+
     public void setCasillaRelations(final Casilla[][] casillas){
         for(int i = 0; i<casillas.length; i++) {
             for (int j = 0; j < casillas.length; j++) {
@@ -170,9 +173,16 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                 }else {
-                    if(casillas[i][j].getIsSelected()) {
-                        if(!casillas[i][j].getIsValidMovement())
+                    if(casillas[i][j].getIsValidMovement() && currentSelected!=null){
+                        Casilla aux = casillas[i][j].getPreviousJump();
+                        while (aux.getPreviousJump()!=null){
+                            aux = aux.getPreviousJump();
+                        }
+                        if(!aux.equals(currentSelected))
                             casillas[i][j].unselect();
+                    }
+                    if(casillas[i][j].getIsSelected()) {
+                        casillas[i][j].unselect();
                     }
                 }
             }
@@ -251,6 +261,10 @@ class Casilla{
         return isSelected;
     }
 
+    public Casilla getPreviousJump(){
+        return previousJump;
+    }
+
     public boolean getIsValidMovement(){
         return isValidMovement;
     }
@@ -279,6 +293,7 @@ class Casilla{
                 view.setBackgroundResource(R.drawable.black_selected);
             else if(teamNumber==2)
                 view.setBackgroundResource(R.drawable.black_selected2);
+            Log.d("k","START SET MOVMENTS***************************************************");
             setMovements(this);
 
         }
@@ -300,7 +315,7 @@ class Casilla{
             }else {
                 Casilla aux = destiny.previousJump;
                 while(aux.previousJump!=null){
-                    if(aux.teamNumber!=this.teamNumber && aux.teamNumber!=0)
+                    if(aux.teamNumber!=this.teamNumber)// && aux.teamNumber!=0)
                         aux.remove();
                     else{
                         Toast.makeText(view.getContext(), "Error, brincaste una ficha de tu color.", Toast.LENGTH_SHORT).show();
@@ -337,48 +352,63 @@ class Casilla{
     }
 
     private boolean setMovements(Casilla casilla){
+
+        Log.d("k","ACTUAL : x: "+casilla.x+" y: "+casilla.y + " Color: "+casilla.teamNumber);
+        Log.d("k", "PREVIOUS : x: "+(casilla.previousJump==null?"null":casilla.previousJump.x)
+                +" y: "+(casilla.previousJump==null?"null":casilla.previousJump.y)
+                +" Color: "+(casilla.previousJump==null?"null":casilla.previousJump.teamNumber));
         boolean flag = false;
         for (int i = 0; i<casilla.casillaList.size(); i++){
             boolean isAdvancing = false;
             Casilla aux = null;
             if(casilla.previousJump==null){
                 isAdvancing = (casilla.casillaList.get(i).y>casilla.y && casilla.teamNumber ==1)
-                        || (casilla.casillaList.get(i).y<casilla.y && casilla.teamNumber ==2);
+                        || (casilla.casillaList.get(i).y<casilla.y && casilla.teamNumber ==2)
+                        || casilla.isDama;
             }else {
                 aux = casilla.previousJump;
                 while (aux.previousJump!=null){
                     aux = aux.previousJump;
                 }
                 isAdvancing = (casilla.casillaList.get(i).y>casilla.y && aux.teamNumber ==1)
-                        || (casilla.casillaList.get(i).y<casilla.y && aux.teamNumber ==2);
+                        || (casilla.casillaList.get(i).y<casilla.y && aux.teamNumber ==2)
+                        || casilla.isDama;
             }
 
-            if(casilla.casillaList.get(i).isEmplty && (casilla.casillaList.get(i).isDama || isAdvancing)) {
+            if(casilla.casillaList.get(i).isEmplty && isAdvancing) {
                 if(casilla.previousJump==null){
                     casilla.casillaList.get(i).isValidMovement = true;
                     casilla.casillaList.get(i).previousJump = casilla;
+                    Log.d("k", "setRelation: \nNextX: "+ casilla.casillaList.get(i).x+" NextY: "+casilla.casillaList.get(i).y);
+                    Log.d("k", "setRelation: \nActualX: "+ casilla.x+" ActualY: "+casilla.y);
                     casilla.casillaList.get(i).view.setBackgroundResource(R.drawable.allowed);
                     flag = true;
                 }else {
                     if(!casilla.isEmplty && casilla.casillaList.get(i).x!= casilla.previousJump.x){
                         casilla.casillaList.get(i).isValidMovement = true;
+                        casilla.casillaList.get(i).previousJump = casilla;
+                        Log.d("k", "setRelation: \nNextX: "+ casilla.casillaList.get(i).x+" NextY: "+casilla.casillaList.get(i).y);
+                        Log.d("k", "setRelation: \nActualX: "+ casilla.x+" ActualY: "+casilla.y);
                         casilla.casillaList.get(i).view.setBackgroundResource(R.drawable.allowed);
                         flag = true;
-                        casilla.casillaList.get(i).previousJump = casilla;
                         if (flag)
                             setMovements(casilla.casillaList.get(i));
                         else
                             flag = setMovements(casilla.casillaList.get(i));
                     }
                 }
-            }else if(!casilla.casillaList.get(i).isEmplty && ( casilla.casillaList.get(i).isDama || isAdvancing)){
+            }else if(!casilla.casillaList.get(i).isEmplty && (casilla.isEmplty || casilla.previousJump==null) && isAdvancing){
                 int tn = -1;
-                if(casilla.isEmplty && casilla.previousJump!=null && aux!=null){
+                if(casilla.previousJump!=null && aux!=null){ // casilla.isEmplty &&
                     tn = aux.teamNumber;
                 }else if(!casilla.isEmplty && casilla.previousJump==null)
                     tn = casilla.teamNumber;
+                //else if(!casilla.isEmplty && casilla.previousJump!=null)
+                    //tn = casilla.previousJump.teamNumber;
                 if(tn > 0 && casilla.casillaList.get(i).teamNumber != tn){
                     casilla.casillaList.get(i).previousJump = casilla;
+                    Log.d("k", "setRelation: \nNextX: "+ casilla.casillaList.get(i).x+" NextY: "+casilla.casillaList.get(i).y);
+                    Log.d("k", "setRelation: \nActualX: "+ casilla.x+" ActualY: "+casilla.y);
                     if (flag)
                         setMovements(casilla.casillaList.get(i));
                     else
