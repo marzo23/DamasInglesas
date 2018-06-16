@@ -294,6 +294,9 @@ class ArtificialInteligence{
     }
 
     public void evaluate(Casilla[][] casillas, int step, int fichasPerdidas, int fichasGanadas, CasillaEvaluation previous){
+        //evaluationsList = orderByHeuristicValue(evaluationsList);
+        //if(step<depth && (fichasGanadas-fichasPerdidas)>=(evaluationsList.size()>0?evaluationsList.get(0).heuristicValue:0))
+        //if((step<=depth/2 && (fichasGanadas-fichasPerdidas)>=0) || (step>depth/2 && (fichasGanadas-fichasPerdidas)>0))
         if(step<depth && (fichasGanadas-fichasPerdidas)>=0)
         {
             List<CasillaEvaluation> evaluations = getMovementsByTeamNumber(step%2==0?teamNumber:(teamNumber==1?2:1), casillas, previous);
@@ -308,12 +311,40 @@ class ArtificialInteligence{
 
                     evaluationsList.add(evaluations.get(0));
                 }
-            }else
-            for (int i = 0; i<evaluations.size(); i++){
-                Casilla[][] tabTmp = cloneTablero(casillas);
-                tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].setMovements(false);
-                if(tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].moveNoUI(tabTmp[evaluations.get(i).to.y][evaluations.get(i).to.x]))
-                    evaluate(tabTmp, step+1, fichasPerdidas+(step%2==0?0:evaluations.get(i).jumps), fichasGanadas+(step%2==0?evaluations.get(i).jumps:0), evaluations.get(i));
+            }else {
+                evaluations = orderByJumps(evaluations, 1);
+
+                /*
+                int i = 0;
+
+                do {
+                    int perdidas = step % 2 == 0 ? 0 : evaluations.get(i).jumps;
+                    int ganadas = step % 2 == 0 ? evaluations.get(i).jumps : 0;
+                    Casilla[][] tabTmp = cloneTablero(casillas);
+                    tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].setMovements(false);
+                    if (tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].moveNoUI(tabTmp[evaluations.get(i).to.y][evaluations.get(i).to.x])) {
+                        evaluate(tabTmp, step + 1, fichasPerdidas + perdidas, fichasGanadas + ganadas, evaluations.get(i));
+                        break;
+                    }
+                    i++;
+                }while (true);
+                //*/
+                int maxGanadas = -1;
+                //*
+                for (int i = 0; i < evaluations.size(); i++) {
+                    int perdidas = step % 2 == 0 ? 0 : evaluations.get(i).jumps;
+                    int ganadas = step % 2 == 0 ? evaluations.get(i).jumps : 0;
+                    if (maxGanadas <= ganadas) {
+                        maxGanadas = ganadas;
+                        Casilla[][] tabTmp = cloneTablero(casillas);
+                        tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].setMovements(false);
+                        if (tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].moveNoUI(tabTmp[evaluations.get(i).to.y][evaluations.get(i).to.x]))
+                            evaluate(tabTmp, step + 1, fichasPerdidas + perdidas, fichasGanadas + ganadas, evaluations.get(i));
+
+                    }
+
+                }
+                //*/
             }
         }
     }
@@ -392,25 +423,28 @@ class ArtificialInteligence{
     }
 
     public List<CasillaEvaluation> orderByHeuristicValue(List<CasillaEvaluation> movementsList){
-        int k = movementsList.size()-1, L = 1, R = movementsList.size()-1;
-        do{
-            for(int j = R; j >= L; j--)
-                if (movementsList.get(j-1).heuristicValue < movementsList.get(j).heuristicValue){
-                    CasillaEvaluation x = movementsList.get(j-1);
-                    movementsList.remove(j-1);
-                    movementsList.add(j, x);
-                    k = j;
-                }
-            L = k+1;
-            for(int j = L; j<=R;j++)
-                if (movementsList.get(j-1).heuristicValue < movementsList.get(j).heuristicValue){
-                    CasillaEvaluation x = movementsList.get(j-1);
-                    movementsList.remove(j-1);
-                    movementsList.add(j, x);
-                    k = j;
-                }
-            R = k-1;
-        }while(L <= R);
+        if(movementsList.size()>1) {
+            int k = movementsList.size() - 1, L = 1, R = movementsList.size() - 1;
+            do {
+                for (int j = R; j >= L; j--)
+                    if (movementsList.get(j - 1).heuristicValue < movementsList.get(j).heuristicValue) {
+                        CasillaEvaluation x = movementsList.get(j - 1);
+                        movementsList.remove(j - 1);
+                        movementsList.add(j, x);
+                        k = j;
+                    }
+                L = k + 1;
+                for (int j = L; j <= R; j++)
+                    if (movementsList.get(j - 1).heuristicValue < movementsList.get(j).heuristicValue) {
+                        CasillaEvaluation x = movementsList.get(j - 1);
+                        movementsList.remove(j - 1);
+                        movementsList.add(j, x);
+                        k = j;
+                    }
+                R = k - 1;
+            } while (L <= R);
+
+        }
         return movementsList;
     }
 
