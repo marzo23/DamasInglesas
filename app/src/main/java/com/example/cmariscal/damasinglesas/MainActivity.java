@@ -29,6 +29,8 @@ import java.util.Comparator;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    int numCasillas = 8;
+    int depth = 6;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,10 +41,6 @@ public class MainActivity extends AppCompatActivity {
         display.getSize(size);
         int ancho = size.x;
         int alto = size.y;
-
-        int numCasillas = 8;
-        int depth = 3;
-
 
         TableLayout tabla = new TableLayout(this);
         tabla.setLayoutParams(new TableLayout.LayoutParams(
@@ -150,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public static void resetStates(Casilla[][] casillas){
+    public void resetStates(Casilla[][] casillas){
         int team1Count = 0;
         int team2Count = 0;
         for(int i = 0; i<casillas.length; i++) {
@@ -164,8 +162,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-        if(team1Count==0 || team2Count==0)
-            Toast.makeText(casillas[0][0].view.getContext(), "GANÓ EQUIPO: "+(team1Count==0?"Blanco":"Rojo"), Toast.LENGTH_SHORT).show();
+        if(team1Count==0 || team2Count==0) {
+            Toast.makeText(casillas[0][0].view.getContext(), "GANÓ EQUIPO: " + (team1Count == 0 ? "Rojo" : "Blanco"), Toast.LENGTH_SHORT).show();
+            setNewGame(casillas);
+        }
             //win(team1Count==0?1:2);
 
     }
@@ -228,10 +228,12 @@ public class MainActivity extends AppCompatActivity {
         return flag;
     }
 
-    public  void setNewGame(Casilla[][] casillas){
+    public void setNewGame(Casilla[][] casillas){
+        ia = new ArtificialInteligence(casillas, depth);
         turno = 2;
         for(int i = 0; i<casillas.length-3; i++){
             for(int j = 0; j<casillas.length; j++){
+                casillas[i][j].remove();
                 if(casillas[i][j].isBlack && i<3){
                     casillas[i][j].teamNumber = 1;
                     casillas[i][j].setIsEmplty(false);
@@ -278,13 +280,16 @@ class ArtificialInteligence{
                 while (aux.previous!=null)
                     aux = aux.previous;
                 casillas[aux.from.y][aux.from.x].setMovements(true);
+                evaluationsList = new ArrayList<CasillaEvaluation>();
                 return casillas[aux.from.y][aux.from.x].move(casillas[aux.to.y][aux.to.x]);
             }else {
                 aux = evaluationsList.get(0);
                 casillas[aux.from.y][aux.from.x].setMovements(true);
+                evaluationsList = new ArrayList<CasillaEvaluation>();
                 return casillas[aux.from.y][aux.from.x].move(casillas[aux.to.y][aux.to.x]);
             }
         }
+        evaluationsList = new ArrayList<CasillaEvaluation>();
         return false;
     }
 
@@ -296,8 +301,13 @@ class ArtificialInteligence{
             for (int i = 0; i<evaluations.size(); i++){
                 evaluations.get(i).heuristicValue = fichasGanadas+(step%2==0?evaluations.get(i).jumps:0) - fichasPerdidas+(step%2==0?0:evaluations.get(i).jumps);
             }
-            if(step==depth-1){
-                evaluationsList.addAll(evaluations);
+            if(step==depth-1 && evaluations!=null){
+                if(evaluations.size()>0){
+                    evaluations = orderByHeuristicValue(evaluations);
+                    //evaluationsList.addAll(evaluations);
+
+                    evaluationsList.add(evaluations.get(0));
+                }
             }else
             for (int i = 0; i<evaluations.size(); i++){
                 Casilla[][] tabTmp = cloneTablero(casillas);
@@ -394,6 +404,29 @@ class ArtificialInteligence{
             L = k+1;
             for(int j = L; j<=R;j++)
                 if (movementsList.get(j-1).heuristicValue < movementsList.get(j).heuristicValue){
+                    CasillaEvaluation x = movementsList.get(j-1);
+                    movementsList.remove(j-1);
+                    movementsList.add(j, x);
+                    k = j;
+                }
+            R = k-1;
+        }while(L <= R);
+        return movementsList;
+    }
+
+    public List<CasillaEvaluation> orderByJumps(List<CasillaEvaluation> movementsList, int order){
+        int k = movementsList.size()-1, L = 1, R = movementsList.size()-1;
+        do{
+            for(int j = R; j >= L; j--)
+                if (movementsList.get(j-1).jumps * order < movementsList.get(j).jumps* order){
+                    CasillaEvaluation x = movementsList.get(j-1);
+                    movementsList.remove(j-1);
+                    movementsList.add(j, x);
+                    k = j;
+                }
+            L = k+1;
+            for(int j = L; j<=R;j++)
+                if (movementsList.get(j-1).jumps* order < movementsList.get(j).jumps* order){
                     CasillaEvaluation x = movementsList.get(j-1);
                     movementsList.remove(j-1);
                     movementsList.add(j, x);
