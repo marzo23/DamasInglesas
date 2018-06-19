@@ -46,7 +46,8 @@ public class ArtificialInteligence{
 
     public boolean move(){
         Casilla[][] tabTmp = cloneTablero(casillas);
-        evaluate(tabTmp, 0, 0, 0, null);
+        //evaluate(tabTmp, 0, 0, 0, null);
+        podaAlfaBeta(tabTmp, 0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null);
         Log.d("EvaluationListIA", "Size: "+evaluationsList.size());
         if(evaluationsList.size()>0) {
             evaluationsList = orderByHeuristicValue(evaluationsList);
@@ -118,8 +119,8 @@ public class ArtificialInteligence{
                 if(step==depth-1 && evaluations!=null){
                     if(evaluations.size()>0){
                         evaluations = orderByHeuristicValue(evaluations);
-                        evaluationsList.addAll(evaluations);
-                        //evaluationsList.add(evaluations.get(0));
+                        //evaluationsList.addAll(evaluations);
+                        evaluationsList.add(evaluations.get(0));
                     }
                 }else {
                     evaluations = orderByJumps(evaluations, 1);
@@ -152,6 +153,73 @@ public class ArtificialInteligence{
         }
     }
 
+    Double podaAlfaBeta(Casilla[][] casillas, int step, Double alfa, Double beta, CasillaEvaluation previous){
+        if(step>=depth-1) {
+            previous.heuristicValue = countFichas(casillas, 1) - countFichas(casillas, 2);
+            evaluationsList.add(previous);
+            return Double.parseDouble(previous.heuristicValue+"");
+        }
+        else{
+            List<CasillaEvaluation> evaluations = getMovementsByTeamNumber(step%2==0?teamNumber:(teamNumber==1?2:1), casillas, previous);
+            if(step%2==0){
+                for (int i = 0; i<evaluations.size(); i++){
+                    Casilla[][] tabTmp = cloneTablero(casillas);
+                    tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].setMovements(false);
+                    if (tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].moveNoUI(tabTmp[evaluations.get(i).to.y][evaluations.get(i).to.x])) {
+                        resetStates(tabTmp, false);
+                        Double aux = podaAlfaBeta(casillas, step+1, alfa, beta, evaluations.get(i));
+                        alfa = aux>alfa?aux:alfa;
+                        if(alfa>=beta)
+                            break;
+                    }
+                }
+                return alfa;
+            }else {
+                for (int i = 0; i<evaluations.size(); i++){
+                    Casilla[][] tabTmp = cloneTablero(casillas);
+                    tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].setMovements(false);
+                    if (tabTmp[evaluations.get(i).from.y][evaluations.get(i).from.x].moveNoUI(tabTmp[evaluations.get(i).to.y][evaluations.get(i).to.x])) {
+                        resetStates(tabTmp, false);
+                        Double aux = podaAlfaBeta(casillas, step+1, alfa, beta, evaluations.get(i));
+                        beta = aux<beta?aux:beta;
+                        if(alfa>=beta)
+                            break;
+                    }
+                }
+                return beta;
+            }
+        }
+    }
+
+    int countFichas(Casilla[][] casillas, int team){
+        int count = 0;
+        for (int i = 0; i<casillas.length; i++){
+            for (int j = 0; j<casillas.length; j++){
+                if(casillas[i][j].teamNumber == team)
+                    count++;
+            }
+        }
+        return count;
+    }
+
+    /*
+    función alfa-beta(nodo //en nuestro caso el tablero, profundidad, α, β, jugador)
+    si nodo es un nodo terminal o profundidad = 0
+        devolver el valor heurístico del nodo
+    si jugador1
+        para cada hijo de nodo
+            α := max(α, alfa-beta(hijo, profundidad-1, α, β, jugador2))
+            si β≤α
+                romper (* poda β *)
+        devolver α
+    si no
+        para cada hijo de nodo
+            β := min(β, alfa-beta(hijo, profundidad-1, α, β, jugador1))
+            si β≤α
+                romper (* poda α *)
+        devolver β
+     */
+
     public void resetStates(Casilla[][] casillas, boolean UI){
         for(int i = 0; i<casillas.length; i++) {
             for (int j = 0; j < casillas.length; j++) {
@@ -166,16 +234,22 @@ public class ArtificialInteligence{
         for(int i = 0; i<casillas.length; i++) {
             for (int j = 0; j < casillas.length; j++) {
                 if(casillas[i][j].teamNumber==team){
+                    resetStates(casillas, false);
                     casillas[i][j].setMovements(false);
                     for(int k = 0; k<casillas[i][j].allowedMovements.size(); k++){
                         Casilla aux = casillas[i][j].allowedMovements.get(k).getPreviousJump();
-                        int jumpCount = 1;
-                        while (!aux.equals(casillas[i][j]) && aux!=null && !aux.equals(aux.getPreviousJump()) && jumpCount<12){
-                            jumpCount++;
-                            aux = aux.getPreviousJump();
+                        if(aux!=null){
+                            int jumpCount = 1;
+                            while (!aux.equals(casillas[i][j]) && !aux.equals(aux.getPreviousJump()) && jumpCount<12){
+                                jumpCount++;
+                                aux = aux.getPreviousJump();
+                                if(aux==null)
+                                    break;
+                            }
+                            if(aux!=null)
+                            if(aux.equals(casillas[i][j]))
+                                movementsList.add(new CasillaEvaluation(casillas[i][j], casillas[i][j].allowedMovements.get(k), jumpCount/2, previous));
                         }
-                        if(aux.equals(casillas[i][j]))
-                            movementsList.add(new CasillaEvaluation(casillas[i][j], casillas[i][j].allowedMovements.get(k), jumpCount/2, previous));
                     }
                 }
             }

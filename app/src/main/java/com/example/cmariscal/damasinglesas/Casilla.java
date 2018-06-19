@@ -120,6 +120,7 @@ public class Casilla{
     }
 
     public boolean move(Casilla destiny){
+        System.gc();
         Log.d("moveUI Team"+this.teamNumber, "from: "+this.x+", "+this.y+"  To: "+destiny.x+", "+destiny.y);
         if(destiny.isEmplty && this.allowedMovements.contains(destiny) && destiny.isValidMovement){
             if((this.teamNumber==2 && destiny.y == 0) || (this.teamNumber==1 && destiny.y == numCasillas-1))
@@ -183,7 +184,7 @@ public class Casilla{
                     return true;
                 } else {
                     Casilla aux = destiny.previousJump;
-                    while (aux.previousJump != null) {
+                    while (aux.previousJump != null && !aux.previousJump.equals(aux)) {
                         if (aux.teamNumber != this.teamNumber) {
                             if (!aux.isEmplty) {
                                 aux.isEmplty = true;
@@ -240,12 +241,12 @@ public class Casilla{
 
     private void damaMovements(Casilla casilla, boolean UI){
         for (int i = 0; i<casilla.casillaList.size(); i++){
-            casilla.casillaList.get(i).previousJump = casilla;
+            //casilla.casillaList.get(i).previousJump = casilla;
             if(casilla.casillaList.get(i).isEmplty)
                 casilla.simpleJump(casilla.casillaList.get(i), UI);
             else {
                 List<Casilla> aux = new ArrayList<Casilla>();
-                //aux.add(this);
+                aux.add(this);
                 casilla.recursiveMovement(casilla.casillaList.get(i), UI, aux);
             }
         }
@@ -267,12 +268,12 @@ public class Casilla{
                     || (casilla.casillaList.get(i).y<casilla.y && this.teamNumber ==2);
             if(!isAdvancing)
                 continue;
-            casilla.casillaList.get(i).previousJump = casilla;
+            //casilla.casillaList.get(i).previousJump = casilla;
             if(casilla.casillaList.get(i).isEmplty)
                 casilla.simpleJump(casilla.casillaList.get(i), UI);
             else{
                 List<Casilla> aux = new ArrayList<Casilla>();
-                //aux.add(this);
+                aux.add(this);
                 casilla.recursiveMovement(casilla.casillaList.get(i), UI, aux);
             }
 
@@ -280,7 +281,7 @@ public class Casilla{
     }
 
     private void recursiveJump(Casilla from, Casilla destiny, boolean UI, List<Casilla> procesed){
-        if(destiny.x!= from.previousJump.x && destiny.y!= from.previousJump.y){
+        //if(destiny.x!= from.previousJump.x && destiny.y!= from.previousJump.y){
             destiny.isValidMovement = true;
             destiny.previousJump = from;
             this.allowedMovements.add(destiny);
@@ -297,18 +298,24 @@ public class Casilla{
                     recursiveMovement(destiny.casillaList.get(i), UI, procesed);
                 }
             }
-        }
+        //}
     }
 
     private void recursiveMovement(Casilla casilla, boolean UI, List<Casilla> procesed){
         if(!casilla.isEmplty && casilla.teamNumber!=this.teamNumber && !procesed.contains(casilla)){
             procesed.add(casilla);
+            boolean flag = false;
             for (int i = 0; i<casilla.casillaList.size(); i++){
-                if(casilla.casillaList.get(i).isEmplty && !this.allowedMovements.contains(casilla.casillaList.get(i)) && !procesed.contains(casilla.casillaList.get(i))) {
+                if(casilla.casillaList.get(i).isEmplty && !procesed.contains(casilla.casillaList.get(i))) {
                     procesed.add(casilla.casillaList.get(i));
-                    recursiveJump(casilla, casilla.casillaList.get(i), UI, procesed);
+                    if(casilla.casillaList.get(i).x!= (casilla.previousJump!=null?casilla.previousJump.x:this.x) && casilla.casillaList.get(i).y!= (casilla.previousJump!=null?casilla.previousJump.y:this.y)) {
+                        flag = true;
+                        recursiveJump(casilla, casilla.casillaList.get(i), UI, procesed);
+                    }
                 }
             }
+            if(flag)
+                casilla.previousJump = this;
         }
     }
 
